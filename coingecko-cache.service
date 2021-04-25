@@ -1,0 +1,16 @@
+[Unit]
+Description=coingecko-cache
+Wants=basic.target
+After=basic.target network.target
+Before=sshd.service
+
+[Service]
+SyslogIdentifier=coingecko-cache
+StandardOutput=syslog
+StandardError=syslog
+ExecReload=/bin/kill -HUP $MAINPID
+ExecStart=/etc/coingecko-cache/coingecko-cache
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
