@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -11,7 +12,13 @@ import (
 	"github.com/go-redis/redis/v8"
 )
 
-var ctx = context.Background()
+var (
+	ctx       = context.Background()
+	frequency *int
+	hostname  *string
+	password  *string
+	db        *int
+)
 
 const (
 	GeckoURL = "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&page=1"
@@ -44,6 +51,38 @@ type CoinInfo struct {
 	AtlDate                      time.Time   `json:"atl_date"`
 	Roi                          interface{} `json:"roi"`
 	LastUpdated                  time.Time   `json:"last_updated"`
+}
+
+func init() {
+	frequency = flag.Int("frequency", 1, "seconds between updates")
+	hostname = flag.String("hostname", "localhost:6379", "connection address for redis")
+	password = flag.String("password", "", "redis password")
+	db = flag.Int("db", 0, "redis db to use")
+	flag.Parse()
+}
+
+func main() {
+
+	rdb := redis.NewClient(&redis.Options{
+		Addr:     *hostname,
+		Password: *password,
+		DB:       *db,
+	})
+
+	for {
+
+		coinsData, err := GetMarketData()
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		for _, coin := range coinsData {
+			go store(rdb, coin)
+		}
+
+		time.Sleep(time.Duration(*frequency) * time.Second)
+	}
 }
 
 // GetMarketData retrieves the array of current prices from coingecko
@@ -110,28 +149,5 @@ func store(client *redis.Client, coin CoinInfo) {
 	client.Set(ctx, coin.ID+"#AtlDate", coin.AtlDate, time.Minute)
 	client.Set(ctx, coin.ID+"#Roi", coin.Roi, time.Minute)
 	client.Set(ctx, coin.ID+"#LastUpdated", coin.LastUpdated, time.Minute)
-}
-
-func main() {
-
-	rdb := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
-		Password: "",
-		DB:       0,
-	})
-
-	for {
-
-		coinsData, err := GetMarketData()
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-
-		for _, coin := range coinsData {
-			go store(rdb, coin)
-		}
-
-		time.Sleep(1 * time.Second)
-	}
+	fmt.Printf("stored: %s\n", coin.ID)
 }

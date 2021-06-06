@@ -29,6 +29,17 @@ make build-<linux/osx>
 ## run
 
 ```
+  -db int
+        redis db to use
+  -frequency int
+        seconds between updates (default 1)
+  -hostname string
+        connection address for redis (default "localhost:6379")
+  -password string
+        redis password
+```
+
+```
 make run
 ```
 
