@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/go-redis/redis/v8"
@@ -20,6 +21,7 @@ var (
 	hostname  *string
 	password  *string
 	db        *int
+	wg        sync.WaitGroup
 )
 
 const (
@@ -84,8 +86,11 @@ func main() {
 		}
 
 		for _, coin := range coinsData {
-			go Store(rdb, coin, time.Duration(*expiry)*time.Second)
+			wg.Add(1)
+			go Store(&wg, rdb, coin, time.Duration(*expiry)*time.Second)
 		}
+		fmt.Println("waiting for storage")
+		wg.Wait()
 
 		pager++
 		if pager > *pages {
@@ -134,7 +139,9 @@ func GetMarketData(page int) ([]CoinInfo, error) {
 }
 
 // Store puts the coins values into redis
-func Store(client *redis.Client, coin CoinInfo, expiry time.Duration) {
+func Store(wg *sync.WaitGroup, client *redis.Client, coin CoinInfo, expiry time.Duration) {
+	defer wg.Done()
+
 	client.Set(ctx, coin.ID+"#Symbol", coin.Symbol, expiry)
 	client.Set(ctx, coin.ID+"#Name", coin.Name, expiry)
 	client.Set(ctx, coin.ID+"#Image", coin.Image, expiry)
