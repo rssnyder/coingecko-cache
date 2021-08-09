@@ -82,7 +82,8 @@ func main() {
 		coinsData, err := GetMarketData(pager)
 		if err != nil {
 			fmt.Println(err)
-			return
+			time.Sleep(time.Duration(*frequency) * time.Second)
+			continue
 		}
 
 		for _, coin := range coinsData {
@@ -142,30 +143,105 @@ func GetMarketData(page int) ([]CoinInfo, error) {
 func Store(wg *sync.WaitGroup, client *redis.Client, coin CoinInfo, expiry time.Duration) {
 	defer wg.Done()
 
-	client.Set(ctx, coin.ID+"#Symbol", coin.Symbol, expiry)
-	client.Set(ctx, coin.ID+"#Name", coin.Name, expiry)
-	client.Set(ctx, coin.ID+"#Image", coin.Image, expiry)
-	client.Set(ctx, coin.ID+"#CurrentPrice", coin.CurrentPrice, expiry)
-	client.Set(ctx, coin.ID+"#MarketCap", coin.MarketCap, expiry)
-	client.Set(ctx, coin.ID+"#MarketCapRank", coin.MarketCapRank, expiry)
-	client.Set(ctx, coin.ID+"#FullyDilutedValuation", coin.FullyDilutedValuation, expiry)
-	client.Set(ctx, coin.ID+"#TotalVolume", coin.TotalVolume, expiry)
-	client.Set(ctx, coin.ID+"#High24H", coin.High24H, expiry)
-	client.Set(ctx, coin.ID+"#Low24H", coin.Low24H, expiry)
-	client.Set(ctx, coin.ID+"#PriceChange24H", coin.PriceChange24H, expiry)
-	client.Set(ctx, coin.ID+"#PriceChangePercentage24H", coin.PriceChangePercentage24H, expiry)
-	client.Set(ctx, coin.ID+"#MarketCapChange24H", coin.MarketCapChange24H, expiry)
-	client.Set(ctx, coin.ID+"#MarketCapChangePercentage24H", coin.MarketCapChangePercentage24H, expiry)
-	client.Set(ctx, coin.ID+"#CirculatingSupply", coin.CirculatingSupply, expiry)
-	client.Set(ctx, coin.ID+"#TotalSupply", coin.TotalSupply, expiry)
-	client.Set(ctx, coin.ID+"#MaxSupply", coin.MaxSupply, expiry)
-	client.Set(ctx, coin.ID+"#Ath", coin.Ath, expiry)
-	client.Set(ctx, coin.ID+"#AthChangePercentage", coin.AthChangePercentage, expiry)
-	client.Set(ctx, coin.ID+"#AthDate", coin.AthDate, expiry)
-	client.Set(ctx, coin.ID+"#Atl", coin.Atl, expiry)
-	client.Set(ctx, coin.ID+"#AtlChangePercentage", coin.AtlChangePercentage, expiry)
-	client.Set(ctx, coin.ID+"#AtlDate", coin.AtlDate, expiry)
-	client.Set(ctx, coin.ID+"#Roi", coin.Roi, expiry)
-	client.Set(ctx, coin.ID+"#LastUpdated", coin.LastUpdated, expiry)
+	err := client.Set(ctx, coin.ID+"#Symbol", coin.Symbol, expiry).Err()
+    if err != nil {
+        fmt.Printf("Error: %s\n", err)
+    }
+	err = client.Set(ctx, coin.ID+"#Name", coin.Name, expiry).Err()
+    if err != nil {
+        fmt.Printf("Error: %s\n", err)
+    }
+	err = client.Set(ctx, coin.ID+"#Image", coin.Image, expiry).Err()
+    if err != nil {
+        fmt.Printf("Error: %s\n", err)
+    }
+	err = client.Set(ctx, coin.ID+"#CurrentPrice", coin.CurrentPrice, expiry).Err()
+    if err != nil {
+        fmt.Printf("Error: %s\n", err)
+    }
+	err = client.Set(ctx, coin.ID+"#MarketCap", coin.MarketCap, expiry).Err()
+    if err != nil {
+        fmt.Printf("Error: %s\n", err)
+    }
+	err = client.Set(ctx, coin.ID+"#MarketCapRank", coin.MarketCapRank, expiry).Err()
+    if err != nil {
+        fmt.Printf("Error: %s\n", err)
+    }
+	err = client.Set(ctx, coin.ID+"#FullyDilutedValuation", coin.FullyDilutedValuation, expiry).Err()
+    if err != nil {
+        fmt.Printf("Error: %s\n", err)
+    }
+	err = client.Set(ctx, coin.ID+"#TotalVolume", coin.TotalVolume, expiry).Err()
+    if err != nil {
+        fmt.Printf("Error: %s\n", err)
+    }
+	err = client.Set(ctx, coin.ID+"#High24H", coin.High24H, expiry).Err()
+    if err != nil {
+        fmt.Printf("Error: %s\n", err)
+    }
+	err = client.Set(ctx, coin.ID+"#Low24H", coin.Low24H, expiry).Err()
+    if err != nil {
+        fmt.Printf("Error: %s\n", err)
+    }
+	err = client.Set(ctx, coin.ID+"#PriceChange24H", coin.PriceChange24H, expiry).Err()
+    if err != nil {
+        fmt.Printf("Error: %s\n", err)
+    }
+	err = client.Set(ctx, coin.ID+"#PriceChangePercentage24H", coin.PriceChangePercentage24H, expiry).Err()
+    if err != nil {
+        fmt.Printf("Error: %s\n", err)
+    }
+	err = client.Set(ctx, coin.ID+"#MarketCapChange24H", coin.MarketCapChange24H, expiry).Err()
+    if err != nil {
+        fmt.Printf("Error: %s\n", err)
+    }
+	err = client.Set(ctx, coin.ID+"#MarketCapChangePercentage24H", coin.MarketCapChangePercentage24H, expiry).Err()
+    if err != nil {
+        fmt.Printf("Error: %s\n", err)
+    }
+	err = client.Set(ctx, coin.ID+"#CirculatingSupply", coin.CirculatingSupply, expiry).Err()
+    if err != nil {
+        fmt.Printf("Error: %s\n", err)
+    }
+	err = client.Set(ctx, coin.ID+"#TotalSupply", coin.TotalSupply, expiry).Err()
+    if err != nil {
+        fmt.Printf("Error: %s\n", err)
+    }
+	err = client.Set(ctx, coin.ID+"#MaxSupply", coin.MaxSupply, expiry).Err()
+    if err != nil {
+        fmt.Printf("Error: %s\n", err)
+    }
+	err = client.Set(ctx, coin.ID+"#Ath", coin.Ath, expiry).Err()
+    if err != nil {
+        fmt.Printf("Error: %s\n", err)
+    }
+	err = client.Set(ctx, coin.ID+"#AthChangePercentage", coin.AthChangePercentage, expiry).Err()
+    if err != nil {
+        fmt.Printf("Error: %s\n", err)
+    }
+	err = client.Set(ctx, coin.ID+"#AthDate", coin.AthDate, expiry).Err()
+    if err != nil {
+        fmt.Printf("Error: %s\n", err)
+    }
+	err = client.Set(ctx, coin.ID+"#Atl", coin.Atl, expiry).Err()
+    if err != nil {
+        fmt.Printf("Error: %s\n", err)
+    }
+	err = client.Set(ctx, coin.ID+"#AtlChangePercentage", coin.AtlChangePercentage, expiry).Err()
+    if err != nil {
+        fmt.Printf("Error: %s\n", err)
+    }
+	err = client.Set(ctx, coin.ID+"#AtlDate", coin.AtlDate, expiry).Err()
+    if err != nil {
+        fmt.Printf("Error: %s\n", err)
+    }
+	err = client.Set(ctx, coin.ID+"#Roi", coin.Roi, expiry).Err()
+    if err != nil {
+        fmt.Printf("Error: %s\n", err)
+    }
+	err = client.Set(ctx, coin.ID+"#LastUpdated", coin.LastUpdated, expiry).Err()
+    if err != nil {
+        fmt.Printf("Error: %s\n", err)
+    }
 	fmt.Printf("stored: %s\n", coin.ID)
 }
