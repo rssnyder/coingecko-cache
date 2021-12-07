@@ -122,6 +122,7 @@ func GetMarketData(page int) ([]CoinInfo, error) {
 
 	if resp.StatusCode == 429 {
 		fmt.Println("Being rate limited by coingecko")
+		time.Sleep(time.Duration(*frequency) * 2 * time.Second)
 		return prices, nil
 	}
 
