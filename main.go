@@ -3,17 +3,23 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
 	"github.com/go-redis/redis/v8"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	log "github.com/sirupsen/logrus"
 )
 
 var (
+	logger    = log.New()
 	ctx       = context.Background()
 	frequency *int
 	pages     *int
@@ -21,8 +27,21 @@ var (
 	hostname  *string
 	password  *string
 	db        *int
+	metrics   *string
 	wg        sync.WaitGroup
 	tail      []string
+	cgHits    = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Name: "cg_hit",
+			Help: "Number of times the cache got data",
+		},
+	)
+	cgMisses = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Name: "cg_miss",
+			Help: "Number of times the cache missed data",
+		},
+	)
 )
 
 const (
@@ -37,8 +56,10 @@ func init() {
 	hostname = flag.String("hostname", "localhost:6379", "connection address for redis")
 	password = flag.String("password", "", "redis password")
 	db = flag.Int("db", 0, "redis db to use")
+	metrics = flag.String("metrics", ":6380", "port for metrics server")
 	flag.Parse()
 	tail = flag.Args()
+	logger.Out = os.Stdout
 }
 
 func main() {
@@ -49,13 +70,23 @@ func main() {
 		DB:       *db,
 	})
 
+	go gather(rdb)
+
+	prometheus.MustRegister(cgHits)
+	prometheus.MustRegister(cgMisses)
+
+	http.Handle("/metrics", promhttp.Handler())
+	logger.Error(http.ListenAndServe(*metrics, nil))
+}
+
+func gather(rdb *redis.Client) {
 	pager := 1
 
 	for {
 
 		coinsData, err := GetMarketData(pager)
 		if err != nil {
-			fmt.Println(err)
+			logger.Error(err)
 			time.Sleep(time.Duration(*frequency) * time.Second)
 			continue
 		}
@@ -71,7 +102,7 @@ func main() {
 
 			coinsData, err := GetCoinData(coin)
 			if err != nil {
-				fmt.Println(err)
+				logger.Error(err)
 				continue
 			}
 			wg.Add(1)
@@ -108,9 +139,8 @@ func GetMarketData(page int) ([]MarketInfo, error) {
 	fmt.Printf("Retrived page %d\n", page)
 
 	if resp.StatusCode == 429 {
-		fmt.Println("Being rate limited by coingecko")
-		time.Sleep(time.Duration(*frequency) * 2 * time.Second)
-		return prices, nil
+		cgMisses.Inc()
+		return prices, errors.New("being rate limited by coingecko")
 	}
 
 	results, err := ioutil.ReadAll(resp.Body)
@@ -120,10 +150,10 @@ func GetMarketData(page int) ([]MarketInfo, error) {
 
 	err = json.Unmarshal(results, &prices)
 	if err != nil {
-		fmt.Printf(resp.Status)
 		return prices, err
 	}
 
+	cgHits.Inc()
 	return prices, nil
 }
 
@@ -148,9 +178,8 @@ func GetCoinData(id string) (MarketInfo, error) {
 	fmt.Printf("Retrived id %s\n", id)
 
 	if resp.StatusCode == 429 {
-		fmt.Println("Being rate limited by coingecko")
-		time.Sleep(time.Duration(*frequency) * 2 * time.Second)
-		return price, nil
+		cgMisses.Inc()
+		return price, errors.New("being rate limited by coingecko")
 	}
 
 	result, err := ioutil.ReadAll(resp.Body)
@@ -160,7 +189,6 @@ func GetCoinData(id string) (MarketInfo, error) {
 
 	err = json.Unmarshal(result, &coinPrice)
 	if err != nil {
-		fmt.Printf(resp.Status)
 		return price, err
 	}
 
@@ -192,6 +220,7 @@ func GetCoinData(id string) (MarketInfo, error) {
 		LastUpdated:                  coinPrice.LastUpdated,
 	}
 
+	cgHits.Inc()
 	return price, nil
 }
 
@@ -201,99 +230,99 @@ func Store(wg *sync.WaitGroup, client *redis.Client, coin MarketInfo, expiry tim
 
 	err := client.Set(ctx, coin.ID+"#Symbol", coin.Symbol, expiry).Err()
 	if err != nil {
-		fmt.Printf("Error: %s\n", err)
+		logger.Error(err)
 	}
 	err = client.Set(ctx, coin.ID+"#Name", coin.Name, expiry).Err()
 	if err != nil {
-		fmt.Printf("Error: %s\n", err)
+		logger.Error(err)
 	}
 	err = client.Set(ctx, coin.ID+"#Image", coin.Image, expiry).Err()
 	if err != nil {
-		fmt.Printf("Error: %s\n", err)
+		logger.Error(err)
 	}
 	err = client.Set(ctx, coin.ID+"#CurrentPrice", coin.CurrentPrice, expiry).Err()
 	if err != nil {
-		fmt.Printf("Error: %s\n", err)
+		logger.Error(err)
 	}
 	err = client.Set(ctx, coin.ID+"#MarketCap", coin.MarketCap, expiry).Err()
 	if err != nil {
-		fmt.Printf("Error: %s\n", err)
+		logger.Error(err)
 	}
 	err = client.Set(ctx, coin.ID+"#MarketCapRank", coin.MarketCapRank, expiry).Err()
 	if err != nil {
-		fmt.Printf("Error: %s\n", err)
+		logger.Error(err)
 	}
 	err = client.Set(ctx, coin.ID+"#FullyDilutedValuation", coin.FullyDilutedValuation, expiry).Err()
 	if err != nil {
-		fmt.Printf("Error: %s\n", err)
+		logger.Error(err)
 	}
 	err = client.Set(ctx, coin.ID+"#TotalVolume", coin.TotalVolume, expiry).Err()
 	if err != nil {
-		fmt.Printf("Error: %s\n", err)
+		logger.Error(err)
 	}
 	err = client.Set(ctx, coin.ID+"#High24H", coin.High24H, expiry).Err()
 	if err != nil {
-		fmt.Printf("Error: %s\n", err)
+		logger.Error(err)
 	}
 	err = client.Set(ctx, coin.ID+"#Low24H", coin.Low24H, expiry).Err()
 	if err != nil {
-		fmt.Printf("Error: %s\n", err)
+		logger.Error(err)
 	}
 	err = client.Set(ctx, coin.ID+"#PriceChange24H", coin.PriceChange24H, expiry).Err()
 	if err != nil {
-		fmt.Printf("Error: %s\n", err)
+		logger.Error(err)
 	}
 	err = client.Set(ctx, coin.ID+"#PriceChangePercentage24H", coin.PriceChangePercentage24H, expiry).Err()
 	if err != nil {
-		fmt.Printf("Error: %s\n", err)
+		logger.Error(err)
 	}
 	err = client.Set(ctx, coin.ID+"#MarketCapChange24H", coin.MarketCapChange24H, expiry).Err()
 	if err != nil {
-		fmt.Printf("Error: %s\n", err)
+		logger.Error(err)
 	}
 	err = client.Set(ctx, coin.ID+"#MarketCapChangePercentage24H", coin.MarketCapChangePercentage24H, expiry).Err()
 	if err != nil {
-		fmt.Printf("Error: %s\n", err)
+		logger.Error(err)
 	}
 	err = client.Set(ctx, coin.ID+"#CirculatingSupply", coin.CirculatingSupply, expiry).Err()
 	if err != nil {
-		fmt.Printf("Error: %s\n", err)
+		logger.Error(err)
 	}
 	err = client.Set(ctx, coin.ID+"#TotalSupply", coin.TotalSupply, expiry).Err()
 	if err != nil {
-		fmt.Printf("Error: %s\n", err)
+		logger.Error(err)
 	}
 	err = client.Set(ctx, coin.ID+"#MaxSupply", coin.MaxSupply, expiry).Err()
 	if err != nil {
-		fmt.Printf("Error: %s\n", err)
+		logger.Error(err)
 	}
 	err = client.Set(ctx, coin.ID+"#Ath", coin.Ath, expiry).Err()
 	if err != nil {
-		fmt.Printf("Error: %s\n", err)
+		logger.Error(err)
 	}
 	err = client.Set(ctx, coin.ID+"#AthChangePercentage", coin.AthChangePercentage, expiry).Err()
 	if err != nil {
-		fmt.Printf("Error: %s\n", err)
+		logger.Error(err)
 	}
 	err = client.Set(ctx, coin.ID+"#AthDate", coin.AthDate, expiry).Err()
 	if err != nil {
-		fmt.Printf("Error: %s\n", err)
+		logger.Error(err)
 	}
 	err = client.Set(ctx, coin.ID+"#Atl", coin.Atl, expiry).Err()
 	if err != nil {
-		fmt.Printf("Error: %s\n", err)
+		logger.Error(err)
 	}
 	err = client.Set(ctx, coin.ID+"#AtlChangePercentage", coin.AtlChangePercentage, expiry).Err()
 	if err != nil {
-		fmt.Printf("Error: %s\n", err)
+		logger.Error(err)
 	}
 	err = client.Set(ctx, coin.ID+"#AtlDate", coin.AtlDate, expiry).Err()
 	if err != nil {
-		fmt.Printf("Error: %s\n", err)
+		logger.Error(err)
 	}
 	err = client.Set(ctx, coin.ID+"#LastUpdated", coin.LastUpdated, expiry).Err()
 	if err != nil {
-		fmt.Printf("Error: %s\n", err)
+		logger.Error(err)
 	}
 	fmt.Printf("stored: %s\n", coin.ID)
 }
