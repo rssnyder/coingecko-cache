@@ -1,6 +1,6 @@
 # coingecko-cache
 
-```                                                              
+```text
 +--------------------+                                           
 |discord-stock-ticker|-----\                                     
 |                    |--\   ---------\                           
@@ -22,13 +22,13 @@ stores info on the top 100 coins by market cap.
 
 ## build
 
-```
+```shell
 make build-<linux/osx>
 ```
 
 ## run
 
-```
+```text
   -db int
         redis db to use
   -expiry int
@@ -41,21 +41,21 @@ make build-<linux/osx>
         number of pages (100 coin each) to pull from (default 1)
   -password string
         redis password
+  + any additional args for coins to fetch individually
 ```
 
-```
+```shell
 make run
 ```
 
 ## install
 
-```
+```shell
 make install
 ```
 
 ## references
 
-**Powered by CoinGecko**
+### Powered by CoinGecko
 
 ![image](https://user-images.githubusercontent.com/7338312/147584095-e88e718b-9349-4e95-adae-02514e3d3a9e.png)
-
