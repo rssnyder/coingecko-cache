@@ -70,12 +70,16 @@ func main() {
 		DB:       *db,
 	})
 
+	go gather(rdb)
+
 	prometheus.MustRegister(cgHits)
 	prometheus.MustRegister(cgMisses)
 
 	http.Handle("/metrics", promhttp.Handler())
-	go http.ListenAndServe(*metrics, nil)
+	logger.Error(http.ListenAndServe(*metrics, nil))
+}
 
+func gather(rdb *redis.Client) {
 	pager := 1
 
 	for {
