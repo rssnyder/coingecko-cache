@@ -98,18 +98,20 @@ func gather(rdb *redis.Client) {
 		fmt.Println("waiting for market storage")
 		wg.Wait()
 
-		for _, coin := range tail {
+		if pager == 1 {
+			for _, coin := range tail {
 
-			coinsData, err := GetCoinData(coin)
-			if err != nil {
-				logger.Error(err)
-				continue
+				coinsData, err := GetCoinData(coin)
+				if err != nil {
+					logger.Error(err)
+					continue
+				}
+				wg.Add(1)
+				go Store(&wg, rdb, coinsData, time.Duration(*expiry)*time.Second)
 			}
-			wg.Add(1)
-			go Store(&wg, rdb, coinsData, time.Duration(*expiry)*time.Second)
+			fmt.Println("waiting for specific storage")
+			wg.Wait()
 		}
-		fmt.Println("waiting for specific storage")
-		wg.Wait()
 
 		pager++
 		if pager > *pages {
