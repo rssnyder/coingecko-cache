@@ -23,6 +23,8 @@ var (
 	ctx       = context.Background()
 	frequency *int
 	pages     *int
+	currency  *string
+	order     *string
 	expiry    *int
 	hostname  *string
 	password  *string
@@ -45,13 +47,15 @@ var (
 )
 
 const (
-	CoinGeckoMarkets = "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&page=%d"
+	CoinGeckoMarkets = "https://api.coingecko.com/api/v3/coins/markets?vs_currency=%s&order=%s&page=%d"
 	CoinGeckoCoin    = "https://api.coingecko.com/api/v3/coins/%s"
 )
 
 func init() {
 	frequency = flag.Int("frequency", 1, "seconds between updates")
 	pages = flag.Int("pages", 1, "number of pages (100 coin each) to pull from")
+	currency = flag.String("currency", "usd", "currency to use")
+	order = flag.String("order", "market_cap_desc", "sort key: market_cap_desc, gecko_desc, gecko_asc, market_cap_asc, market_cap_desc, volume_asc, volume_desc, id_asc, id_desc")
 	expiry = flag.Int("expiry", 60, "number of seconds to keep entries in the cache")
 	hostname = flag.String("hostname", "localhost:6379", "connection address for redis")
 	password = flag.String("password", "", "redis password")
@@ -125,7 +129,7 @@ func gather(rdb *redis.Client) {
 func GetMarketData(page int) ([]MarketInfo, error) {
 	var prices []MarketInfo
 
-	req, err := http.NewRequest("GET", fmt.Sprintf(CoinGeckoMarkets, page), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf(CoinGeckoMarkets, *currency, *order, page), nil)
 	if err != nil {
 		return prices, err
 	}
@@ -200,7 +204,7 @@ func GetCoinData(id string) (MarketInfo, error) {
 		Name:                         coinPrice.Name,
 		Image:                        coinPrice.Image.Thumb,
 		CurrentPrice:                 float64(coinPrice.MarketData.CurrentPrice.Usd),
-		MarketCap:                    int64(coinPrice.MarketData.MarketCap.Usd),
+		MarketCap:                    float64(coinPrice.MarketData.MarketCap.Usd),
 		MarketCapRank:                coinPrice.MarketCapRank,
 		FullyDilutedValuation:        float64(coinPrice.MarketData.FullyDilutedValuation.Usd),
 		TotalVolume:                  float64(coinPrice.MarketData.TotalVolume.Usd),
