@@ -6,7 +6,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"sync"
@@ -98,18 +98,20 @@ func gather(rdb *redis.Client) {
 		fmt.Println("waiting for market storage")
 		wg.Wait()
 
-		for _, coin := range tail {
+		if pager == 1 {
+			for _, coin := range tail {
 
-			coinsData, err := GetCoinData(coin)
-			if err != nil {
-				logger.Error(err)
-				continue
+				coinsData, err := GetCoinData(coin)
+				if err != nil {
+					logger.Error(err)
+					continue
+				}
+				wg.Add(1)
+				go Store(&wg, rdb, coinsData, time.Duration(*expiry)*time.Second)
 			}
-			wg.Add(1)
-			go Store(&wg, rdb, coinsData, time.Duration(*expiry)*time.Second)
+			fmt.Println("waiting for specific storage")
+			wg.Wait()
 		}
-		fmt.Println("waiting for specific storage")
-		wg.Wait()
 
 		pager++
 		if pager > *pages {
@@ -143,7 +145,7 @@ func GetMarketData(page int) ([]MarketInfo, error) {
 		return prices, errors.New("being rate limited by coingecko")
 	}
 
-	results, err := ioutil.ReadAll(resp.Body)
+	results, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return prices, err
 	}
@@ -182,7 +184,7 @@ func GetCoinData(id string) (MarketInfo, error) {
 		return price, errors.New("being rate limited by coingecko")
 	}
 
-	result, err := ioutil.ReadAll(resp.Body)
+	result, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return price, err
 	}
