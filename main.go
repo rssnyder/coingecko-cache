@@ -6,7 +6,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"sync"
@@ -145,7 +145,7 @@ func GetMarketData(page int) ([]MarketInfo, error) {
 		return prices, errors.New("being rate limited by coingecko")
 	}
 
-	results, err := ioutil.ReadAll(resp.Body)
+	results, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return prices, err
 	}
@@ -184,7 +184,7 @@ func GetCoinData(id string) (MarketInfo, error) {
 		return price, errors.New("being rate limited by coingecko")
 	}
 
-	result, err := ioutil.ReadAll(resp.Body)
+	result, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return price, err
 	}
